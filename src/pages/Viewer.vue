@@ -9,15 +9,28 @@
           :key="idx_r + '.' +  idx_c"
           style="padding: 0px"
         >
-          <img
-            v-bind:src="column.src"
-            alt=""
+          <div 
             v-on:click="swap(idx_r,idx_c)"
-            width=30
-            style="display:block">
+            style="display:block; width:30px; height:30px;">
+            <img
+              v-if="column.src"
+              v-bind:src="column.src"
+              alt=""
+              width=30
+              height=30
+              style="display:block">
+        </div>
         </td>
       </tr>
     </table>
+    <button
+      v-on:click="deletePanel"
+      >delete
+    </button>
+    <button
+      v-on:click="dropPanel"
+      >drop
+    </button>
   </div>
 </template>
 
@@ -74,28 +87,77 @@ export default {
           var upPanel
           var leftPanel
           if (row != 0) {
-            upPanel = tmpTable[row-1][column]
+            upPanel = tmpTable[row-1][column].color
           }
           if (column != 0) {
-            leftPanel= tmpRow[column-1]
+            leftPanel= tmpRow[column-1].color
           }
 
           // 抽選候補パネル
-          var candidatePanel = panels.filter(v=>{return (v != upPanel && v != leftPanel)})
+          var candidatePanel = panels.filter(v=>{return (v.color != upPanel && v.color != leftPanel)})
           var panelNum = Math.floor(Math.random() * candidatePanel.length)
-          tmpRow.push(candidatePanel[panelNum])
+          // deepcopy
+          tmpRow.push(JSON.parse(JSON.stringify(candidatePanel[panelNum])))
         }
         tmpTable.push(tmpRow)
       }
       this.table = tmpTable
     },
     swap: function(row, column){
-      console.log(row, column)
       if (column == 0) { return }
       var table = this.table
       var tmp = table[row][column]
       table[row][column] = table[row][column-1]
       table[row][column-1] = tmp
+      this.table = table
+    },
+    deletePanel: function(){
+      var table = this.table
+
+      for(var row = 0; row < table.length; row++){
+        for(var column = 0; column < table[row].length; column++){
+
+          // 縦チェック
+          if(row != 0 && row != table.length-1){
+            if (table[row-1][column].color == table[row][column].color && table[row][column].color == table[row+1][column].color){
+              table[row-1][column].delFlag = true
+              table[row][column].delFlag = true
+              table[row+1][column].delFlag = true
+            }
+          }
+          // 横チェック
+          if(column != 0 && column != table[row].length-1){
+            if (table[row][column-1].color == table[row][column].color == table[row][column+1].color){
+              table[row][column-1].delFlag = true
+              table[row][column].delFlag = true
+              table[row][column+1].delFlag = true
+            }
+          }
+
+        }
+      }
+      this.table = table.map(r=>{return r.map(c=>{return c.delFlag?{}:c})})
+    },
+    dropPanel: function(){
+      var table = this.table
+      // 一つも落下処理がなかったら完了とする
+      var isDone = false
+      while(!isDone){
+        isDone = true
+        // 最下段から最上段-1まで走査
+        for(var row = table.length-1; 0 < row; row--){
+          for(var column = 0; column < table[row].length; column++){
+            //上のパネルが空だった場合はスキップ
+            if(!Object.keys(table[row-1][column]).length){ continue }
+            if(!Object.keys(table[row][column]).length){
+             console.log(table[row][column])
+             table[row][column] = table[row-1][column]
+             table[row-1][column] = {}
+             isDone = false
+            }
+          }
+        }
+      }
       this.table = table
     }
   }
