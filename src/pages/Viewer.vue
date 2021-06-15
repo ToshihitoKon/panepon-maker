@@ -12,6 +12,7 @@
           <img
             v-bind:src="column.src"
             alt=""
+          v-on:click="swap(idx_r,idx_c)"
             width=30>
         </td>
       </tr>
@@ -86,6 +87,15 @@ export default {
         tmpTable.push(tmpRow)
       }
       this.table = tmpTable
+    },
+    swap: function(row, column){
+      console.log(row, column)
+      if (column == 0) { return }
+      var table = this.table
+      var tmp = table[row][column]
+      table[row][column] = table[row][column-1]
+      table[row][column-1] = tmp
+      this.table = table
     }
   }
 }
