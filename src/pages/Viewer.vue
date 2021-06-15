@@ -12,8 +12,9 @@
           <img
             v-bind:src="column.src"
             alt=""
-          v-on:click="swap(idx_r,idx_c)"
-            width=30>
+            v-on:click="swap(idx_r,idx_c)"
+            width=30
+            style="display:block">
         </td>
       </tr>
     </table>
