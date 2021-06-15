@@ -13,8 +13,8 @@
             v-on:click="swap(idx_r,idx_c)"
             style="display:block; width:30px; height:30px;">
             <img
-              v-if="column.src"
-              v-bind:src="column.src"
+              v-if="column.color"
+              v-bind:src="colorToImage(column.color)"
               alt=""
               width=30
               height=30
@@ -45,25 +45,27 @@ import ImageYellow from "@/assets/yellow.png"
 const panels = [
   {
     color: "green",
-    src: ImageGreen,
   },
   {
     color: "purple",
-    src: ImagePurple,
   },
   {
     color: "red",
-    src: ImageRed,
   },
   {
     color: "sky",
-    src: ImageSky,
   },
   {
     color: "yellow",
-    src: ImageYellow,
   },
 ]
+const panelImageMap = {
+  green: ImageGreen,
+  purple: ImagePurple,
+  red: ImageRed,
+  sky: ImageSky,
+  yellow: ImageYellow,
+}
 
 export default {
   data: function(){
@@ -117,17 +119,28 @@ export default {
       for(var row = 0; row < table.length; row++){
         for(var column = 0; column < table[row].length; column++){
 
+          if(this.panelIsEmpty(table[row][column])) {continue}
           // 縦チェック
-          if(row != 0 && row != table.length-1){
-            if (table[row-1][column].color == table[row][column].color && table[row][column].color == table[row+1][column].color){
+          if(0 < row && row < table.length -1){
+            if (
+              !this.panelIsEmpty(table[row-1][column]) &&
+              !this.panelIsEmpty(table[row+1][column]) &&
+              table[row-1][column].color == table[row][column].color &&
+              table[row][column].color == table[row+1][column].color
+            ){
               table[row-1][column].delFlag = true
               table[row][column].delFlag = true
               table[row+1][column].delFlag = true
             }
           }
           // 横チェック
-          if(column != 0 && column != table[row].length-1){
-            if (table[row][column-1].color == table[row][column].color == table[row][column+1].color){
+          if(0 < column && column < table[row].length-1){
+            if (
+              !this.panelIsEmpty(table[row][column-1]) &&
+              !this.panelIsEmpty(table[row][column+1]) &&
+              table[row][column-1].color == table[row][column].color &&
+              table[row][column].color == table[row][column+1].color
+            ){
               table[row][column-1].delFlag = true
               table[row][column].delFlag = true
               table[row][column+1].delFlag = true
@@ -148,9 +161,8 @@ export default {
         for(var row = table.length-1; 0 < row; row--){
           for(var column = 0; column < table[row].length; column++){
             //上のパネルが空だった場合はスキップ
-            if(!Object.keys(table[row-1][column]).length){ continue }
-            if(!Object.keys(table[row][column]).length){
-             console.log(table[row][column])
+            if(this.panelIsEmpty(table[row-1][column])) { continue }
+            if(this.panelIsEmpty(table[row][column])){
              table[row][column] = table[row-1][column]
              table[row-1][column] = {}
              isDone = false
@@ -159,6 +171,12 @@ export default {
         }
       }
       this.table = table
+    },
+    colorToImage: function(color){
+      return panelImageMap[color]
+    },
+    panelIsEmpty: function(panel){
+      return !Object.keys(panel).length
     }
   }
 }
