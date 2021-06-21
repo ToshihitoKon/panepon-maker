@@ -31,6 +31,19 @@
       v-on:click="dropPanel"
       >drop
     </button>
+    <div>
+      <textarea v-model="tabledataTextarea"></textarea>
+    </div>
+    <div>
+      <button
+        v-on:click="importTableData"
+        >import
+      </button>
+      <button
+        v-on:click="exportTableData"
+        >export
+      </button>
+    </div>
   </div>
 </template>
 
@@ -44,18 +57,23 @@ import ImageYellow from "@/assets/yellow.png"
 
 const panels = [
   {
+    id: 1,
     color: "green",
   },
   {
+    id: 2,
     color: "purple",
   },
   {
+    id: 3,
     color: "red",
   },
   {
+    id: 4,
     color: "sky",
   },
   {
+    id: 5,
     color: "yellow",
   },
 ]
@@ -70,11 +88,17 @@ const panelImageMap = {
 export default {
   data: function(){
     return{
-      table: []
+      table: [],
+      tabledataTextarea: "",
     }
   },
   mounted: function() {
     this.generateTable()
+    const gotData = this.$route.query
+    console.log(gotData)
+    if(typeof(gotData) == 'string'){
+      this.tabledata = this.importTableDataDecode(gotData)
+    }
   },
   methods:{
     generateTable: function(){
@@ -177,6 +201,50 @@ export default {
     },
     panelIsEmpty: function(panel){
       return !Object.keys(panel).length
+    },
+    exportTableData: function(){
+      const exportTableData = []
+      this.table.map(r=>{
+        const row = []
+        r.map(c=>{
+          if(c.id == undefined) {
+            row.push(9) 
+          }else{
+            row.push(c.id)
+          }
+          console.log(row)
+        })
+        exportTableData.push(parseInt(row.join('')).toString(36))
+      })
+      this.tabledataTextarea = exportTableData.join('_')
+    },
+    importTableData: function(){
+      this.table = this.importTableDataDecode(this.tabledataTextarea)
+    },
+    importTableDataDecode: function(data){
+      if (data == "") {
+        return
+      }
+      const tabledata = []
+      const splitedData = data.split('_')
+
+      splitedData.map(r=>{
+        console.log(r)
+        const tmp = []
+        const raw = parseInt(r,36).toString().split('')
+        raw.map(c=>{
+          const panel = panels.find(v=>{
+            return v.id == c
+          })
+          if (panel === undefined){
+            tmp.push({})
+          }else{
+            tmp.push(JSON.parse(JSON.stringify(panel)))
+          }
+        }) 
+        tabledata.push(tmp)
+      })
+      return tabledata
     }
   }
 }
