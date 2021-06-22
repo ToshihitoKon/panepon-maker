@@ -47,29 +47,31 @@ const panels = [
   {
     id: 1,
     color: "green",
-    image: ImageGreen,
   },
   {
     id: 2,
     color: "purple",
-    image: ImagePurple,
   },
   {
     id: 3,
     color: "red",
-    image: ImageRed,
   },
   {
     id: 4,
     color: "sky",
-    image: ImageSky,
   },
   {
     id: 5,
     color: "yellow",
-    image: ImageYellow,
   },
 ]
+const panelImageSrcs = {
+  green: ImageGreen,
+  purple: ImagePurple,
+  red: ImageRed,
+  sky: ImageSky,
+  yellow: ImageYellow,
+}
 
 export default {
   data: function(){
@@ -109,25 +111,28 @@ export default {
       
       this.procCursor()
       this.draw()
-      setTimeout(this.mainProc, Math.floor((1/1)*1000)) // Nfps
+      setTimeout(this.mainProc, Math.floor((1/10)*1000)) // Nfps
     },
 
     // 描画系
     draw: function(){
       const ctx = this.displayCtx
-      ctx.clearRect(0,0,this.width,this.height)
+      ctx.clearRect(0,0,this.display.width,this.display.height)
       this.drawDisplay(ctx)
       this.drawCursor(ctx, 0, 0)
     },
     drawDisplay: function(ctx){
       const table = this.table
-      var img = new Image()
       for (var row = 0; row < table.length; row++)  {
         for (var column = 0; column < table[row].length; column++) {
-          img.src = table[row][column].image
+          if(this.isEmpty(table[row][column])){continue}
+          const img = this.colorToImg(table[row][column].color)
           ctx.drawImage(img, column*30, row*30, 30, 30)
         }
       }
+    },
+    colorToImg: function(color){
+      return this.panelImages[color]
     },
     drawCursor: function(ctx){
       this.currentCursorPos.map(pos=>{
@@ -145,10 +150,24 @@ export default {
       this.mouseMoveEventQueue = {}
 
       if (!this.isEmpty(clickEv)){
-        console.log("click", clickEv)
+        this.swap(
+          this.currentCursorPos[0].row,
+          this.currentCursorPos[0].column
+)
       }
       if (!this.isEmpty(moveEv)){
-        console.log("move", moveEv)
+        const cursorPanelCol = parseInt(moveEv.offsetX / 30)
+        const cursorPanelRow = parseInt(moveEv.offsetY / 30)
+        this.currentCursorPos = [
+          {
+            column: cursorPanelCol,
+            row: cursorPanelRow,
+          },
+          {
+            column: cursorPanelCol - 1,
+            row: cursorPanelRow,
+          },
+        ]
       }
     },
     onClick: function(e){
@@ -157,17 +176,21 @@ export default {
     onMousemove: function(e){
       this.mouseMoveEventQueue = e
     },
-    loadImage: function(imgSrc){
+    loadImage: function(img){
       return new Promise((resolve, reject) => {
-        const img = new Image();
         img.onload = () => resolve(img);
         img.onerror = (e) => reject(e);
-        img.src = imgSrc;
       })
     },
     panelPreload: function(){
+      var panelImages = {}
+      for (const [key, value] of Object.entries(panelImageSrcs)) {
+        panelImages[key] = new Image()
+        panelImages[key].src = value
+      }
+      this.panelImages = panelImages
       return Promise.all(
-        panels.map(p=>{return this.loadImage(p.image)})
+        Object.values(this.panelImages).map(p=>{return this.loadImage(p)})
       )
     },
     generateTable: function(){
