@@ -1,36 +1,24 @@
 <template>
   <div>
-    <table style="border-spacing: 0px">
-      <tr
-        v-for="(row, idx_r) in table"
-        :key="idx_r">
-        <td
-          v-for="(column, idx_c) in row"
-          :key="idx_r + '.' +  idx_c"
-          style="padding: 0px"
-        >
-          <div 
-            v-on:click="swap(idx_r,idx_c)"
-            style="display:block; width:30px; height:30px;">
-            <img
-              v-if="column.color"
-              v-bind:src="colorToImage(column.color)"
-              alt=""
-              width=30
-              height=30
-              style="display:block">
-        </div>
-        </td>
-      </tr>
-    </table>
-    <button
-      v-on:click="deletePanel"
-      >delete
-    </button>
-    <button
-      v-on:click="dropPanel"
-      >drop
-    </button>
+    <div>
+      <canvas
+        :width="display.width"
+        :height="display.height"
+        ref="paneponDisplay"
+        v-on:click="onClick"
+        v-on:mousemove="onMousemove"
+       ></canvas>
+    </div>
+    <div>
+      <button
+        v-on:click="deletePanel"
+        >delete
+      </button>
+      <button
+        v-on:click="dropPanel"
+        >drop
+      </button>
+    </div>
     <div>
       <textarea v-model="tabledataTextarea"></textarea>
     </div>
@@ -59,50 +47,131 @@ const panels = [
   {
     id: 1,
     color: "green",
+    image: ImageGreen,
   },
   {
     id: 2,
     color: "purple",
+    image: ImagePurple,
   },
   {
     id: 3,
     color: "red",
+    image: ImageRed,
   },
   {
     id: 4,
     color: "sky",
+    image: ImageSky,
   },
   {
     id: 5,
     color: "yellow",
+    image: ImageYellow,
   },
 ]
-const panelImageMap = {
-  green: ImageGreen,
-  purple: ImagePurple,
-  red: ImageRed,
-  sky: ImageSky,
-  yellow: ImageYellow,
-}
 
 export default {
   data: function(){
     return{
       table: [],
       tabledataTextarea: "",
+      display: {
+        width: 30 * 6,
+        height: 30 * 12,
+      },
+      mouseMoveEventQueue: {},
+      mouseClickEventQueue: {},
+      currentCursorPos: [
+        {
+          column: 2,
+          row: 6,
+        },
+        {
+          column: 3,
+          row: 6,
+        },
+      ],
     }
   },
   mounted: function() {
+    this.displayCtx = this.$refs.paneponDisplay.getContext('2d')
     this.generateTable()
-    const gotData = this.$route.query
-    console.log(gotData)
-    if(typeof(gotData) == 'string'){
-      this.tabledata = this.importTableDataDecode(gotData)
-    }
+    this.panelPreload().then(this.mainProc)
   },
   methods:{
+    mainProc: function(){
+      // this.generateTable()
+      // 不思議不具合メモ
+      // 毎フレームgenerateTableして遊んでたら、開始後10秒で謎盤面が出るようになった
+      // fps変えても10秒後、呼び出し回数でもないし謎
+      console.log("mainProc")
+      
+      this.procCursor()
+      this.draw()
+      setTimeout(this.mainProc, Math.floor((1/1)*1000)) // Nfps
+    },
+
+    // 描画系
+    draw: function(){
+      const ctx = this.displayCtx
+      ctx.clearRect(0,0,this.width,this.height)
+      this.drawDisplay(ctx)
+      this.drawCursor(ctx, 0, 0)
+    },
+    drawDisplay: function(ctx){
+      const table = this.table
+      var img = new Image()
+      for (var row = 0; row < table.length; row++)  {
+        for (var column = 0; column < table[row].length; column++) {
+          img.src = table[row][column].image
+          ctx.drawImage(img, column*30, row*30, 30, 30)
+        }
+      }
+    },
+    drawCursor: function(ctx){
+      this.currentCursorPos.map(pos=>{
+        ctx.strokeStyle = "#FFF"
+        ctx.lineWidth = 2
+        ctx.strokeRect(pos.column*30+2, pos.row*30+2, 30-2,30-2)
+      })
+    },
+
+    // 処理系
+    procCursor: function(){
+      const clickEv = this.mouseClickEventQueue 
+      const moveEv = this.mouseMoveEventQueue
+      this.mouseClickEventQueue = {}
+      this.mouseMoveEventQueue = {}
+
+      if (!this.isEmpty(clickEv)){
+        console.log("click", clickEv)
+      }
+      if (!this.isEmpty(moveEv)){
+        console.log("move", moveEv)
+      }
+    },
+    onClick: function(e){
+      this.mouseClickEventQueue = e
+    },
+    onMousemove: function(e){
+      this.mouseMoveEventQueue = e
+    },
+    loadImage: function(imgSrc){
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = (e) => reject(e);
+        img.src = imgSrc;
+      })
+    },
+    panelPreload: function(){
+      return Promise.all(
+        panels.map(p=>{return this.loadImage(p.image)})
+      )
+    },
     generateTable: function(){
-      var tmpTable = []
+      const tmpTable = []
       var tmpRow
 
       for (var row = 0; row < 12; row++){
@@ -120,8 +189,8 @@ export default {
           }
 
           // 抽選候補パネル
-          var candidatePanel = panels.filter(v=>{return (v.color != upPanel && v.color != leftPanel)})
-          var panelNum = Math.floor(Math.random() * candidatePanel.length)
+          const candidatePanel = panels.filter(v=>{return (v.color != upPanel && v.color != leftPanel)})
+          const panelNum = Math.floor(Math.random() * candidatePanel.length)
           // deepcopy
           tmpRow.push(JSON.parse(JSON.stringify(candidatePanel[panelNum])))
         }
@@ -143,12 +212,12 @@ export default {
       for(var row = 0; row < table.length; row++){
         for(var column = 0; column < table[row].length; column++){
 
-          if(this.panelIsEmpty(table[row][column])) {continue}
+          if(this.isEmpty(table[row][column])) {continue}
           // 縦チェック
           if(0 < row && row < table.length -1){
             if (
-              !this.panelIsEmpty(table[row-1][column]) &&
-              !this.panelIsEmpty(table[row+1][column]) &&
+              !this.isEmpty(table[row-1][column]) &&
+              !this.isEmpty(table[row+1][column]) &&
               table[row-1][column].color == table[row][column].color &&
               table[row][column].color == table[row+1][column].color
             ){
@@ -160,8 +229,8 @@ export default {
           // 横チェック
           if(0 < column && column < table[row].length-1){
             if (
-              !this.panelIsEmpty(table[row][column-1]) &&
-              !this.panelIsEmpty(table[row][column+1]) &&
+              !this.isEmpty(table[row][column-1]) &&
+              !this.isEmpty(table[row][column+1]) &&
               table[row][column-1].color == table[row][column].color &&
               table[row][column].color == table[row][column+1].color
             ){
@@ -185,8 +254,8 @@ export default {
         for(var row = table.length-1; 0 < row; row--){
           for(var column = 0; column < table[row].length; column++){
             //上のパネルが空だった場合はスキップ
-            if(this.panelIsEmpty(table[row-1][column])) { continue }
-            if(this.panelIsEmpty(table[row][column])){
+            if(this.isEmpty(table[row-1][column])) { continue }
+            if(this.isEmpty(table[row][column])){
              table[row][column] = table[row-1][column]
              table[row-1][column] = {}
              isDone = false
@@ -196,11 +265,8 @@ export default {
       }
       this.table = table
     },
-    colorToImage: function(color){
-      return panelImageMap[color]
-    },
-    panelIsEmpty: function(panel){
-      return !Object.keys(panel).length
+    isEmpty: function(obj){
+      return !Object.keys(obj).length
     },
     exportTableData: function(){
       const exportTableData = []
