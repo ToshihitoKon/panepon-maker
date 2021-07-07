@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="viewer">
     <div>
       <canvas
         :width="display.width"
@@ -12,24 +12,24 @@
     <div>
       <button
         v-on:click="deletePanel"
-        >delete
+        ><img class="icons" src="../assets/delete.svg" width="15" height="15">delete
       </button>
       <button
         v-on:click="dropPanel"
-        >drop
+        ><img class="icons" src="../assets/arrow-down.svg" width="15" height="15">drop
       </button>
     </div>
     <div>
-      <textarea v-model="tabledataTextarea"></textarea>
+      <textarea id="exportArea" v-model="tabledataTextarea"></textarea>
     </div>
     <div>
       <button
         v-on:click="importTableData"
-        >import
+        ><img class="icons" src="../assets/import.svg" width="15" height="15">import
       </button>
       <button
         v-on:click="exportTableData"
-        >export
+        ><img class="icons" src="../assets/export.svg" width="15" height="15">export
       </button>
     </div>
   </div>
@@ -338,3 +338,31 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.viewer {
+  display: block;
+  width: 200px;
+  margin: 0 auto;
+}
+
+button{
+  width: 44%;
+  height: 30px;
+  margin: 2px;
+  line-height: 20px;
+}
+.icons{
+  position: relative;
+  top: 2px;
+  left: -2px;
+}
+
+#exportArea{
+  width: 170px;
+  height: 60px;
+  padding: 5px;
+  border: none;
+  background: #ddd;
+}
+</style>
