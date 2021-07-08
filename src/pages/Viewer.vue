@@ -1,6 +1,14 @@
 <template>
   <div class="viewer">
     <div>
+      <div
+        v-for="ev, key in displayKeyMap()"
+        :key="key"
+      >
+        {{ key }}:{{ ev }}
+      </div>
+    </div>
+    <div>
       <canvas
         :width="display.width"
         :height="display.height"
@@ -73,6 +81,16 @@ const panelImageSrcs = {
   yellow: ImageYellow,
 }
 
+const keyUserEventMap = {
+  "KeyW": "UP",
+  "KeyA": "LEFT",
+  "KeyS": "DOWN",
+  "KeyD": "RIGHT",
+  "KeyJ": "SWAP",
+  "KeyK": "DROP",
+  "KeyL": "DELETE",
+}
+
 export default {
   data: function(){
     return{
@@ -82,8 +100,10 @@ export default {
         width: 30 * 6,
         height: 30 * 12,
       },
-      mouseMoveEventQueue: {},
-      mouseClickEventQueue: {},
+      cursorMoveEventQueue: {},
+      swapEventQueue: false,
+      dropEventQueue: false,
+      deleteEventQueue: false,
       currentCursorPos: [
         {
           column: 2,
@@ -97,21 +117,42 @@ export default {
     }
   },
   mounted: function() {
+    this.keyboardEventHandler()
     this.displayCtx = this.$refs.paneponDisplay.getContext('2d')
     this.generateTable()
     this.panelPreload().then(this.mainProc)
   },
   methods:{
+    displayKeyMap: function(){
+      // TODO: 綺麗に出す
+      return keyUserEventMap
+    },
     mainProc: function(){
       // this.generateTable()
       // 不思議不具合メモ
       // 毎フレームgenerateTableして遊んでたら、開始後10秒で謎盤面が出るようになった
       // fps変えても10秒後、呼び出し回数でもないし謎
-      console.log("mainProc")
+      // console.log("mainProc")
       
       this.procCursor()
+      this.procDrop()
+      this.procDelete()
       this.draw()
       setTimeout(this.mainProc, Math.floor((1/10)*1000)) // Nfps
+    },
+    procDelete: function() {
+      const deleteEv = this.deleteEventQueue
+      this.deleteEventQueue = false
+      if (deleteEv) {
+        this.deletePanel()
+      }
+    },
+    procDrop: function() {
+      const dropEv = this.dropEventQueue
+      this.dropEventQueue = false
+      if (dropEv) {
+        this.dropPanel()
+      }
     },
 
     // 描画系
@@ -143,38 +184,82 @@ export default {
     },
 
     // 処理系
+    keyboardEventHandler: function() {
+      document.addEventListener('keydown', (ev) => {
+        const key = ev.code
+        this.procUserEvent(keyUserEventMap[key])
+      })
+    },
+    procUserEvent: function(userEvent) {
+      const moveEv = {
+        X: this.currentCursorPos[0].column,
+        Y: this.currentCursorPos[0].row,
+      }
+      switch(userEvent){
+      case "UP": 
+        moveEv.Y--
+        break;
+      case "DOWN": 
+        moveEv.Y++
+        break;
+      case "LEFT": 
+        moveEv.X--
+        break;
+      case "RIGHT": 
+        moveEv.X++
+        break;
+      case "SWAP": 
+        this.swapEventQueue = true
+        break;
+      case "DROP": 
+        this.dropEventQueue = true
+        break;
+      case "DELETE": 
+        this.deleteEventQueue = true
+        break;
+      }
+      this.cursorMoveEventQueue = moveEv
+    },
     procCursor: function(){
-      const clickEv = this.mouseClickEventQueue 
-      const moveEv = this.mouseMoveEventQueue
-      this.mouseClickEventQueue = {}
-      this.mouseMoveEventQueue = {}
+      // Queueは抜き出しておいてリセット
+      const swapEv = this.swapEventQueue 
+      const moveEv = this.cursorMoveEventQueue
+      this.swapEventQueue = false
+      this.cursorMoveEventQueue = {}
 
-      if (!this.isEmpty(clickEv)){
+      // フレーム内で入れ替えイベントがあった場合
+      if (swapEv){
         this.swap(
           this.currentCursorPos[0].row,
           this.currentCursorPos[0].column
-)
+        )
       }
+
+      // フレーム内でカーソル移動イベントがあった場合
       if (!this.isEmpty(moveEv)){
-        const cursorPanelCol = parseInt(moveEv.offsetX / 30)
-        const cursorPanelRow = parseInt(moveEv.offsetY / 30)
         this.currentCursorPos = [
           {
-            column: cursorPanelCol,
-            row: cursorPanelRow,
+            column: moveEv.X,
+            row: moveEv.Y,
           },
           {
-            column: cursorPanelCol - 1,
-            row: cursorPanelRow,
+            column: moveEv.X - 1,
+            row: moveEv.Y,
           },
         ]
       }
     },
-    onClick: function(e){
-      this.mouseClickEventQueue = e
+    onClick: function(){
+      // TODO: マウスモード判定
+      this.swapEventQueue = true
     },
     onMousemove: function(e){
-      this.mouseMoveEventQueue = e
+      // TODO: マウスモード判定
+      const moveEv = {
+        X: parseInt(e.offsetX / 30),
+        Y: parseInt(e.offsetY / 30),
+      }
+      this.cursorMoveEventQueue = moveEv
     },
     loadImage: function(img){
       return new Promise((resolve, reject) => {
