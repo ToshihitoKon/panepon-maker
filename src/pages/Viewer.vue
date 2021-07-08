@@ -177,7 +177,7 @@ export default {
     },
     drawCursor: function(ctx){
       this.currentCursorPos.map(pos=>{
-        ctx.strokeStyle = "#FFF"
+        ctx.strokeStyle = "#CCC"
         ctx.lineWidth = 2
         ctx.strokeRect(pos.column*30+2, pos.row*30+2, 30-2,30-2)
       })

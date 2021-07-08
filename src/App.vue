@@ -1,6 +1,7 @@
 <template>
   <img alt="Vue logo" src="./assets/logo.png">
   <Viewer></Viewer>
+  <a target="_blank" href="https://github.com/ToshihitoKon/panepon-maker">github</a>
 </template>
 
 <script>
